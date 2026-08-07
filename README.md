@@ -18,22 +18,25 @@ Background on AppBlock and Android blocking generally:
 
 | Piece | State |
 |---|---|
-| Node dumper (milestone 0) | written, not yet run on a device |
-| YouTube Shorts detector | logic verified by unit tests; `reel_progress_bar` is a signal confirmed by other working blockers |
-| Overlay, service, watchdog | written, not yet run on a device |
+| Node dumper (milestone 0) | compiles; not yet run on a device |
+| YouTube Shorts detector | unit tested; `reel_progress_bar` is a signal confirmed by other working blockers |
+| Overlay, service, watchdog | compiles; not yet run on a device |
 | Instagram detector | **view ids are unverified guesses** — ships disabled, see below |
 
-**The Android code in this repo has never been compiled.** The environment it was written
-in blocks `dl.google.com`, so neither the Android SDK nor the Android Gradle Plugin could
-be downloaded and `./gradlew assembleDebug` was never run. Expect to fix some import or
-resource errors on the first build.
-
-What *is* verified: the detectors are deliberately pure functions over a
-[`ScreenSignals`](app/src/main/kotlin/app/blockreels/detect/ScreenSignals.kt) snapshot with
-no Android dependencies, so they were compiled and unit-tested on the JVM — 14 tests, all
-passing. That's the logic most likely to be wrong and most annoying to debug on a phone.
+CI builds the APK and runs the tests on every push. Nothing here has run on a phone yet,
+which is the one thing CI cannot tell us: that a detector fires on the real Instagram is a
+claim only a device can settle.
 
 ## Build and install
+
+Easiest: grab `blockreels-debug-apk` from the latest green
+[CI run](../../actions) and
+
+```bash
+adb install -r app-debug.apk
+```
+
+Or build locally, if you have the Android SDK:
 
 ```bash
 ./gradlew assembleDebug
@@ -59,12 +62,23 @@ first real job:
 3. Repeat for: a DM thread, a friend's Story, the home feed, Explore, a profile.
 4. Share the dumps out of the app and diff them.
    The ids present in Reels and absent from Stories *are* your detector.
-5. Correct the constants in
-   [`InstagramDetector.kt`](app/src/main/kotlin/app/blockreels/detect/InstagramDetector.kt),
-   update `InstagramDetectorTest` to match, flip `verified` to `true`.
+5. Drop each dump into `app/src/test/resources/fixtures/`, named for the verdict you
+   expect (`instagram-reels.BLOCK.txt`, `instagram-dm-thread.ALLOW.txt`, …).
+6. Correct the constants in
+   [`InstagramDetector.kt`](app/src/main/kotlin/app/blockreels/detect/InstagramDetector.kt)
+   until `./gradlew testDebugUnitTest` is green, then flip `verified` to `true`.
+
+Step 5 is what makes step 6 tractable. `FixtureTest` replays every captured dump through
+its detector, so once a surface has been captured **the detector can be rewritten and
+re-checked without a phone** — and no later repair can silently break a screen that was
+already working. Adding a regression is dropping in a file; no test code to write.
 
 Dump mode stays in release builds on purpose. When an Instagram update breaks detection,
 you want to re-diff on the phone in five minutes, not rebuild from a laptop you don't have.
+
+A caution on what dumps contain: view ids and class names, but also on-screen **text** —
+which for a DM capture means the messages. Read one before committing it and trim anything
+you'd rather not have in git history. The ids are the part that matters.
 
 ### The naming trap
 
