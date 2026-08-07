@@ -1,0 +1,18 @@
+BlockReels dump — com.google.android.youtube
+verdict: none
+SYNTHETIC — hand-written to exercise FixtureTest. Replace with a real capture.
+The Shorts shelf is present but the fullscreen player is not, so this must NOT be blocked.
+================================================================================
+
+FrameLayout  #content  [0,0][1080,2340]
+  RecyclerView  #results  [0,120][1080,2240]
+    FrameLayout  #rich_grid_shelf  [0,120][1080,800]
+      TextView  #shelf_title  text="Shorts"  [24,130][300,180]
+      RecyclerView  #shorts_shelf_recycler  [0,190][1080,790]
+        ImageView  #thumbnail  desc="Short video"  [8,190][360,790]
+    FrameLayout  #video_lockup  [0,810][1080,1400]
+      TextView  #video_title  text="A normal long video"  [24,1200][900,1260]
+  FrameLayout  #pivot_bar  [0,2240][1080,2340]
+    ImageView  #pivot_home  desc="Home"  SELECTED  [40,2250][140,2330]
+
+-- 13 nodes

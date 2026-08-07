@@ -1,0 +1,17 @@
+BlockReels dump — com.google.android.youtube
+verdict: BLOCK YouTube Shorts (matched reel_progress_bar)
+SYNTHETIC — hand-written to exercise FixtureTest. Replace with a real capture.
+================================================================================
+
+FrameLayout  #content  [0,0][1080,2340]
+  FrameLayout  #reel_watch_fragment_root  [0,0][1080,2340]
+    ViewPager2  #reel_recycler  [0,0][1080,2340]
+      FrameLayout  #reel_player_page_container  [0,0][1080,2340]
+        SurfaceView  #player_view  [0,0][1080,2340]
+        ProgressBar  #reel_progress_bar  [0,2280][1080,2288]
+        TextView  #reel_channel_name  text="@someone"  [24,2100][400,2140]
+        ImageView  #reel_like_button  desc="like this video"  [1000,1800][1060,1860]
+        ImageView  #reel_comment_button  desc="comments"  [1000,1900][1060,1960]
+  FrameLayout  #pivot_bar  [0,2240][1080,2340]
+
+-- 12 nodes
