@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Plain views rather than Compose: hosting a ComposeView from a Service means wiring up
+    ViewTree lifecycle/saved-state owners by hand, and this screen is a heading and two
+    buttons. Not worth the failure modes on the one surface that must never fail to appear
+    or fail to go away.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/block_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/overlay_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/overlay_title"
+        android:textColor="@color/block_text"
+        android:textSize="34sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/overlay_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="@color/block_text_dim"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/overlay_back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:minWidth="200dp"
+        android:text="@string/overlay_back" />
+
+    <Button
+        android:id="@+id/overlay_home"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:minWidth="200dp"
+        android:text="@string/overlay_home"
+        android:textColor="@color/block_text_dim" />
+</LinearLayout>

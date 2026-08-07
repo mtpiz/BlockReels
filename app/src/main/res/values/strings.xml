@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">BlockReels</string>
+
+    <string name="accessibility_summary">Covers short-form feeds while leaving the rest of the app alone</string>
+    <string name="accessibility_description">BlockReels reads the on-screen layout of the apps you select in order to tell a short-form feed apart from the parts of the app you still want, such as messages and stories. Screen contents are never sent anywhere — the app has no internet permission.</string>
+
+    <string name="overlay_title">Not this.</string>
+    <string name="overlay_subtitle">%1$s is blocked.</string>
+    <string name="overlay_back">Go back</string>
+    <string name="overlay_home">Home</string>
+
+    <string name="dump_channel_name">Dump mode</string>
+    <string name="dump_notification_title">Dump mode is on</string>
+    <string name="dump_notification_text">Open a screen, then tap Dump</string>
+    <string name="dump_action">Dump screen</string>
+
+    <string name="section_permissions">Setup</string>
+    <string name="section_blocking">Blocking</string>
+    <string name="section_dumps">Dump mode</string>
+
+    <string name="accessibility_enabled">Accessibility service is on</string>
+    <string name="accessibility_disabled">Accessibility service is off</string>
+    <string name="accessibility_cta">Open accessibility settings</string>
+    <string name="accessibility_hint">BlockReels cannot see which screen you are on until this is enabled.</string>
+    <string name="restricted_hint">If the toggle is greyed out, the install was classed as sideloaded. Open App info → ⋮ → Allow restricted settings, then try again. Installing with adb avoids this.</string>
+
+    <string name="dump_mode_toggle">Dump mode</string>
+    <string name="dump_mode_hint">Adds a notification action that writes the current screen\'s layout to a file. Open Reels, dump, open Stories, dump, then diff the two — the ids in one and not the other are your detector.</string>
+    <string name="dumps_empty">No dumps yet.</string>
+    <string name="dumps_clear">Clear all</string>
+    <string name="dump_share">Share</string>
+
+    <string name="unverified_warning">View ids unverified — capture the surfaces with dump mode and correct InstagramDetector before enabling.</string>
+    <string name="blocked_count">%1$d blocked so far</string>
+    <string name="blocked_count_hint">If this stops rising, a detector has probably broken.</string>
+</resources>

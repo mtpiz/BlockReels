@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="block_background">#FF12305C</color>
+    <color name="block_text">#FFF2F5FA</color>
+    <color name="block_text_dim">#FFA8BBD6</color>
+    <color name="launcher_background">#FF12305C</color>
+</resources>

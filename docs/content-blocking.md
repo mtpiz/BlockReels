@@ -267,18 +267,23 @@ annoying.
 
 ---
 
-## 8. Open questions before building
+## 8. Scope, decided
 
-- **Instagram home feed** — "friends' stories are fine, but not the scrolling afterwards"
-  is ambiguous. Does the main home feed count as scroll addiction, or is Reels the only
-  target? This changes the detector materially: the home feed and Reels share the
-  bottom-nav structure and need a different discriminator than Stories-vs-Reels.
-- **YouTube Shorts shelf** — block the shelf on the home feed too? It's the entry point,
-  and blocking only the player means you still see the bait.
-- **Other apps** — TikTok, Snapchat Spotlight, Facebook Reels, Reddit's video feed,
-  X's For You?
-- **Escape hatch** — always-on, or scheduled/strict-mode sessions like AppBlock? Always-on
-  is simpler and probably right for v1.
+- **Instagram** — block Reels, the home feed **and** Explore. Only DMs, Stories and
+  profiles you navigate to deliberately stay. Effectively: Instagram as a messaging app
+  with Stories attached.
+- **YouTube** — block the fullscreen Shorts player only. The Shorts shelf on the home feed
+  stays, which conveniently is also the safer detector: `reel_progress_bar` cannot match
+  the shelf, so there's no risk of taking the home feed down as collateral.
+- **Always-on**, no schedules or strict mode in v1.
+- Other apps (TikTok, Snapchat Spotlight, Facebook Reels) deferred — TikTok in particular
+  is entirely feed, so plain app-level blocking covers it.
+
+Note what the Instagram decision does to the detector: blocking the home feed as well as
+Reels means the Stories-vs-Reels discriminator is no longer sufficient on its own, because
+Stories launch from a tray sitting on top of the home feed and both are briefly present
+during the transition. The allow-rule for Stories therefore has to be evaluated *before*
+the feed block-rule, not merely alongside it.
 
 ---
 
