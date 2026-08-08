@@ -20,6 +20,17 @@ class DumpStore(context: Context) {
     fun list(): List<File> =
         dir.listFiles()?.sortedByDescending { it.lastModified() }.orEmpty()
 
+    /**
+     * Renames a capture to a fixture name. If that name is already taken — easy to do when
+     * re-capturing a surface — the existing one is replaced, since the newer capture is the
+     * one that reflects the current app version.
+     */
+    fun rename(file: File, fileName: String): File {
+        val target = File(dir, fileName)
+        if (target.exists() && target != file) target.delete()
+        return if (file.renameTo(target)) target else file
+    }
+
     fun clear() {
         dir.listFiles()?.forEach { it.delete() }
     }

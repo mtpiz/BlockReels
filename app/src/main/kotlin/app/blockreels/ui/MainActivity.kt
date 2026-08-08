@@ -13,6 +13,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.blockreels.R
 import app.blockreels.service.BlockReelsService
 import java.io.File
 
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = vm,
                     isServiceEnabled = ::isAccessibilityServiceEnabled,
                     onOpenAccessibilitySettings = ::openAccessibilitySettings,
-                    onShareDump = ::shareDump,
+                    onShareDumps = ::shareDumps,
                 )
             }
         }
@@ -41,14 +42,23 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
-    private fun shareDump(file: File) {
-        val uri = FileProvider.getUriForFile(this, "$packageName.dumps", file)
-        val send = Intent(Intent.ACTION_SEND).apply {
+    /**
+     * Shares every capture in one go. Uploading to GitHub from a phone is tedious enough
+     * without doing it six times, and the upload form takes a multi-select.
+     */
+    private fun shareDumps(files: List<File>) {
+        if (files.isEmpty()) return
+        val uris = ArrayList(files.map { FileProvider.getUriForFile(this, "$packageName.dumps", it) })
+        val send = Intent(if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
+            if (uris.size == 1) {
+                putExtra(Intent.EXTRA_STREAM, uris.first())
+            } else {
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            }
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(send, file.name))
+        startActivity(Intent.createChooser(send, getString(R.string.dump_share_title)))
     }
 
     /**

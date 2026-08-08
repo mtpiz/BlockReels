@@ -32,6 +32,11 @@
     <string name="dumps_empty">No dumps yet.</string>
     <string name="dumps_clear">Clear all</string>
     <string name="dump_share">Share</string>
+    <string name="dump_share_all">Share all %1$d dumps</string>
+    <string name="dump_share_title">BlockReels dumps</string>
+    <string name="dump_label">Label</string>
+    <string name="dump_unlabelled">Unlabelled</string>
+    <string name="dump_label_hint">Label each capture with the screen it came from, then share them all at once and upload to the fixtures folder on GitHub.</string>
 
     <string name="unverified_warning">View ids unverified — capture the surfaces with dump mode and correct InstagramDetector before enabling.</string>
     <string name="blocked_count">%1$d blocked so far</string>

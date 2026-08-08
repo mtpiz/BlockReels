@@ -43,6 +43,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         settings.setDumpMode(enabled)
     }
 
+    fun labelDump(file: File, fileName: String) {
+        dumpStore.rename(file, fileName)
+        refreshDumps()
+    }
+
     fun clearDumps() {
         dumpStore.clear()
         refreshDumps()

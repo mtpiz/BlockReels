@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -40,6 +43,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.blockreels.R
 import app.blockreels.detect.Detectors
+import app.blockreels.dump.FixtureLabels
 import java.io.File
 
 @Composable
@@ -47,7 +51,7 @@ fun MainScreen(
     viewModel: MainViewModel,
     isServiceEnabled: () -> Boolean,
     onOpenAccessibilitySettings: () -> Unit,
-    onShareDump: (File) -> Unit,
+    onShareDumps: (List<File>) -> Unit,
 ) {
     val enabledPackages by viewModel.enabledPackages.collectAsStateWithLifecycle()
     val dumpMode by viewModel.dumpMode.collectAsStateWithLifecycle()
@@ -205,18 +209,27 @@ fun MainScreen(
                 )
             }
         } else {
-            items(dumps, key = { it.absolutePath }) { file ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = file.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = { onShareDump(file) }) {
-                        Text(stringResource(R.string.dump_share))
-                    }
+            item {
+                Button(
+                    onClick = { onShareDumps(dumps) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.dump_share_all, dumps.size))
                 }
+            }
+            item {
+                Text(
+                    stringResource(R.string.dump_label_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(dumps, key = { it.absolutePath }) { file ->
+                DumpRow(
+                    file = file,
+                    onLabel = { label -> viewModel.labelDump(file, label.fileName) },
+                    onShare = { onShareDumps(listOf(file)) },
+                )
                 HorizontalDivider()
             }
             item {
@@ -224,6 +237,66 @@ fun MainScreen(
                     Text(stringResource(R.string.dumps_clear))
                 }
             }
+        }
+    }
+}
+
+/**
+ * A capture is only usable as a fixture once its filename encodes the expected verdict, so
+ * the name is chosen from the known surfaces rather than typed — there is no good way to
+ * rename a file on a phone.
+ */
+@Composable
+private fun DumpRow(
+    file: File,
+    onLabel: (FixtureLabels.Label) -> Unit,
+    onShare: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val labelled = FixtureLabels.forFileName(file.name)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = labelled?.display ?: stringResource(R.string.dump_unlabelled),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (labelled == null) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+            Text(
+                text = file.name,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Box {
+            TextButton(onClick = { menuOpen = true }) {
+                Text(stringResource(R.string.dump_label))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                FixtureLabels.all.forEach { label ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                label.display + if (label.blocks) "  (block)" else "  (allow)",
+                            )
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onLabel(label)
+                        },
+                    )
+                }
+            }
+        }
+
+        TextButton(onClick = onShare) {
+            Text(stringResource(R.string.dump_share))
         }
     }
 }
