@@ -52,6 +52,7 @@ fun MainScreen(
     isServiceEnabled: () -> Boolean,
     onOpenAccessibilitySettings: () -> Unit,
     onShareDumps: (List<File>) -> Unit,
+    onSaveDumps: (List<File>) -> Unit,
 ) {
     val enabledPackages by viewModel.enabledPackages.collectAsStateWithLifecycle()
     val dumpMode by viewModel.dumpMode.collectAsStateWithLifecycle()
@@ -210,7 +211,17 @@ fun MainScreen(
             }
         } else {
             item {
+                // Saving beats sharing for the actual job: GitHub's upload form is a file
+                // picker, and a picker can reach Downloads but not a share sheet.
                 Button(
+                    onClick = { onSaveDumps(dumps) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.dump_save_all, dumps.size))
+                }
+            }
+            item {
+                TextButton(
                     onClick = { onShareDumps(dumps) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {

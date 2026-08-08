@@ -36,7 +36,9 @@
     <string name="dump_share_title">BlockReels dumps</string>
     <string name="dump_label">Label</string>
     <string name="dump_unlabelled">Unlabelled</string>
-    <string name="dump_label_hint">Label each capture with the screen it came from, then share them all at once and upload to the fixtures folder on GitHub.</string>
+    <string name="dump_save_all">Save all %1$d to Downloads</string>
+    <string name="dump_saved">Saved %1$d dumps to Downloads/%2$s</string>
+    <string name="dump_label_hint">Label each capture with the screen it came from, then save them to Downloads. Dumps live in private app storage otherwise, where the Files app can\'t see them.</string>
 
     <string name="unverified_warning">View ids unverified — capture the surfaces with dump mode and correct InstagramDetector before enabling.</string>
     <string name="blocked_count">%1$d blocked so far</string>

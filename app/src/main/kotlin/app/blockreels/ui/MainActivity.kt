@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.blockreels.R
+import app.blockreels.dump.DumpExporter
 import app.blockreels.service.BlockReelsService
 import java.io.File
 
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
                     isServiceEnabled = ::isAccessibilityServiceEnabled,
                     onOpenAccessibilitySettings = ::openAccessibilitySettings,
                     onShareDumps = ::shareDumps,
+                    onSaveDumps = ::saveDumpsToDownloads,
                 )
             }
         }
@@ -40,6 +43,15 @@ class MainActivity : ComponentActivity() {
 
     private fun openAccessibilitySettings() {
         startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun saveDumpsToDownloads(files: List<File>) {
+        val saved = DumpExporter.saveToDownloads(this, files)
+        Toast.makeText(
+            this,
+            getString(R.string.dump_saved, saved, DumpExporter.FOLDER),
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     /**
