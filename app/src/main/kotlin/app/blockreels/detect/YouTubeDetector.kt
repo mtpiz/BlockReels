@@ -18,7 +18,7 @@ class YouTubeDetector : SurfaceDetector {
     override val label = "YouTube Shorts"
     override val verified = true
 
-    override fun detect(signals: ScreenSignals): Detection? {
+    override fun detect(signals: ScreenSignals, config: DetectorConfig): Detection? {
         if (signals.hasAnyId(*SHORTS_PLAYER_IDS)) {
             return Detection(
                 surface = "YouTube Shorts",

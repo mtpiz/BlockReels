@@ -12,6 +12,18 @@ data class Detection(
     val reason: String,
 )
 
+/**
+ * Tunables a detector reads. Kept out of [ScreenSignals] because these are preferences,
+ * not observations, and passing them explicitly keeps detectors pure functions.
+ */
+data class DetectorConfig(
+    /**
+     * How many posts into the home feed you may go before it's considered doomscrolling.
+     * Friends' posts cluster at the top; the tail is the part worth losing.
+     */
+    val feedPostLimit: Int = 10,
+)
+
 interface SurfaceDetector {
     val packageName: String
 
@@ -33,5 +45,5 @@ interface SurfaceDetector {
      * Stories makes the phone annoying enough to uninstall the blocker; a false negative
      * just means one reel got through. The asymmetry is the whole design.
      */
-    fun detect(signals: ScreenSignals): Detection?
+    fun detect(signals: ScreenSignals, config: DetectorConfig = DetectorConfig()): Detection?
 }

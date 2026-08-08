@@ -27,6 +27,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val blockedCount: StateFlow<Int> =
         settings.blockedCount.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
+    val feedPostLimit: StateFlow<Int> =
+        settings.feedPostLimit.stateIn(viewModelScope, SharingStarted.Eagerly, 10)
+
+    fun setFeedPostLimit(limit: Int) = viewModelScope.launch {
+        settings.setFeedPostLimit(limit)
+    }
+
     private val _dumps = MutableStateFlow<List<File>>(emptyList())
     val dumps: StateFlow<List<File>> = _dumps.asStateFlow()
 

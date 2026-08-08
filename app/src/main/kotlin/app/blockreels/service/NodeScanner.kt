@@ -24,6 +24,7 @@ object NodeScanner {
         root: AccessibilityNodeInfo,
         packageName: String,
         maxNodes: Int = DEFAULT_MAX_NODES,
+        scrollIndex: Int? = null,
     ): ScreenSignals {
         val viewIds = HashSet<String>()
         val descriptions = HashSet<String>()
@@ -67,6 +68,7 @@ object NodeScanner {
             selectedViewIds = selectedViewIds,
             nodesScanned = scanned,
             truncated = queue.isNotEmpty(),
+            scrollIndex = scrollIndex,
         )
     }
 }

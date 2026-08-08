@@ -22,6 +22,13 @@ data class ScreenSignals(
     val selectedViewIds: Set<String>,
     val nodesScanned: Int,
     val truncated: Boolean,
+    /**
+     * First visible adapter position of the list last scrolled, or null when nothing has
+     * been scrolled since the screen appeared. This is how far down a feed you are — the
+     * difference between reading the few posts at the top and falling into the infinite
+     * part below them.
+     */
+    val scrollIndex: Int? = null,
 ) {
     fun hasId(fragment: String): Boolean = viewIds.any { fragment in it }
 
@@ -39,6 +46,7 @@ data class ScreenSignals(
             selectedViewIds = emptySet(),
             nodesScanned = 0,
             truncated = false,
+            scrollIndex = null,
         )
     }
 }

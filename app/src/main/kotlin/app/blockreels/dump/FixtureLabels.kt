@@ -16,7 +16,7 @@ object FixtureLabels {
 
     val all = listOf(
         Label("Instagram", "Reels", "instagram-reels.BLOCK.txt"),
-        Label("Instagram", "Home feed", "instagram-home-feed.BLOCK.txt"),
+        Label("Instagram", "Home feed (top)", "instagram-home-feed-top.ALLOW.txt"),
         Label("Instagram", "Explore", "instagram-explore.BLOCK.txt"),
         Label("Instagram", "DM thread", "instagram-dm-thread.ALLOW.txt"),
         Label("Instagram", "Story", "instagram-story.ALLOW.txt"),

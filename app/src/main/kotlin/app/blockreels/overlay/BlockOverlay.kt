@@ -22,24 +22,49 @@ import app.blockreels.R
  * ([app.blockreels.service.BlockReelsService]) re-checks the screen on a timer while this
  * is up rather than trusting that it will be told when to dismiss.
  */
-class BlockOverlay(private val service: AccessibilityService) {
+class BlockOverlay(
+    private val service: AccessibilityService,
+    /**
+     * Invoked before an escape action runs. The overlay comes down immediately rather than
+     * waiting for the watchdog to notice, so the button responds instantly, and the caller
+     * uses this to stop re-blocking mid-navigation.
+     */
+    private val onEscape: () -> Unit = {},
+) {
 
     private val windowManager = service.getSystemService(WindowManager::class.java)
     private var view: View? = null
 
     val isShowing: Boolean get() = view != null
 
-    fun show(surfaceName: String) {
+    fun show(surfaceName: String, escapeToTop: (() -> Boolean)? = null) {
         if (view != null) {
             updateLabel(surfaceName)
             return
         }
 
         val inflated = LayoutInflater.from(service).inflate(R.layout.overlay_block, null)
+
+        val topButton = inflated.findViewById<Button>(R.id.overlay_top)
+        if (escapeToTop == null) {
+            topButton.visibility = View.GONE
+        } else {
+            topButton.setOnClickListener {
+                escape()
+                // Falls back to BACK if the app won't scroll — never leave the user stuck
+                // behind a button that silently did nothing.
+                if (!escapeToTop()) {
+                    service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                }
+            }
+        }
+
         inflated.findViewById<Button>(R.id.overlay_back).setOnClickListener {
+            escape()
             service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
         }
         inflated.findViewById<Button>(R.id.overlay_home).setOnClickListener {
+            escape()
             service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
         }
 
@@ -58,6 +83,11 @@ class BlockOverlay(private val service: AccessibilityService) {
                 view = inflated
                 updateLabel(surfaceName)
             }
+    }
+
+    private fun escape() {
+        hide()
+        onEscape()
     }
 
     fun hide() {

@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import app.blockreels.R
 import app.blockreels.data.Settings
 import app.blockreels.detect.Detection
+import app.blockreels.detect.DetectorConfig
 import app.blockreels.detect.Detectors
 import app.blockreels.detect.Verdict
 import app.blockreels.dump.DumpStore
@@ -42,7 +43,17 @@ class BlockReelsService : AccessibilityService() {
 
     private val settings by lazy { Settings(applicationContext) }
     private val dumpStore by lazy { DumpStore(applicationContext) }
-    private val overlay by lazy { BlockOverlay(this) }
+    private val overlay by lazy {
+        BlockOverlay(this) {
+            // The user chose to leave. Stop judging until the app has actually navigated,
+            // and forget the scroll depth so the screen they land on starts clean.
+            suppressUntil = SystemClock.uptimeMillis() + ESCAPE_SUPPRESS_MS
+            scrollIndex = null
+            main.removeCallbacks(watchdog)
+            pendingBlock?.let(main::removeCallbacks)
+            pendingBlock = null
+        }
+    }
 
     @Volatile private var enabledPackages: Set<String> = emptySet()
     @Volatile private var dumpMode: Boolean = false
@@ -50,6 +61,10 @@ class BlockReelsService : AccessibilityService() {
     private var lastScanAt = 0L
     private var pendingBlock: Runnable? = null
     private var overlayShownAt = 0L
+    private var scrollIndex: Int? = null
+    private var suppressUntil = 0L
+
+    @Volatile private var feedPostLimit: Int = DetectorConfig().feedPostLimit
 
     private val dumpReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -78,6 +93,10 @@ class BlockReelsService : AccessibilityService() {
                 enabledPackages = packages
                 applyServiceInfo(packages)
             }
+            .launchIn(scope)
+
+        settings.feedPostLimit
+            .onEach { feedPostLimit = it }
             .launchIn(scope)
 
         settings.dumpMode
@@ -114,7 +133,8 @@ class BlockReelsService : AccessibilityService() {
     private fun applyServiceInfo(packages: Set<String>) {
         serviceInfo = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_SCROLLED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             // FLAG_REPORT_VIEW_IDS is load-bearing: without it viewIdResourceName is null
             // on every node and every detector silently matches nothing.
@@ -140,20 +160,46 @@ class BlockReelsService : AccessibilityService() {
             return
         }
 
+        val isTransition = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        if (isTransition) {
+            // A new screen has its own scroll position, and carrying the old one over would
+            // block a freshly opened feed that is sitting at the top.
+            scrollIndex = null
+        }
+
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            recordScroll(event)
+        }
+
         // Window-state changes are rare and mark exactly the transitions we care about, so
         // they bypass the throttle. Content changes fire continuously inside a video feed
         // and must not.
-        val isTransition = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         if (!isTransition) {
             val now = SystemClock.uptimeMillis()
             if (now - lastScanAt < SCAN_THROTTLE_MS) return
             lastScanAt = now
         }
 
+        // After the user acts on the block screen, give the app a moment to navigate before
+        // judging it again — otherwise the mid-transition screen re-blocks instantly and the
+        // button looks broken.
+        if (SystemClock.uptimeMillis() < suppressUntil) return
+
         when (evaluate()?.takeIf { it.verdict == Verdict.BLOCK }) {
             null -> dismiss()
             else -> requestBlock()
         }
+    }
+
+    /**
+     * Tracks how far down a list the user is. `fromIndex` is the first visible adapter
+     * position, which for the Instagram feed is simply "which post you're on".
+     */
+    private fun recordScroll(event: AccessibilityEvent) {
+        val index = event.fromIndex.takeIf { it >= 0 }
+            ?: event.toIndex.takeIf { it >= 0 }
+            ?: return
+        scrollIndex = index
     }
 
     /** Walks the current screen and asks the relevant detector about it. */
@@ -162,7 +208,10 @@ class BlockReelsService : AccessibilityService() {
         val pkg = root.packageName?.toString() ?: return null
         if (pkg !in enabledPackages) return null
         val detector = Detectors[pkg] ?: return null
-        return detector.detect(NodeScanner.scan(root, pkg))
+        return detector.detect(
+            NodeScanner.scan(root, pkg, scrollIndex = scrollIndex),
+            DetectorConfig(feedPostLimit = feedPostLimit),
+        )
     }
 
     private fun currentAppRoot(): AccessibilityNodeInfo? {
@@ -192,7 +241,14 @@ class BlockReelsService : AccessibilityService() {
             pendingBlock = null
             val detection = evaluate()?.takeIf { it.verdict == Verdict.BLOCK } ?: return@Runnable
             Log.i(TAG, "blocking ${detection.surface} (${detection.reason})")
-            overlay.show(detection.surface)
+            // Only a depth-limited feed can be escaped by returning to the top; for Reels
+            // or Explore there is no "top" worth offering.
+            val toTop = if (detection.reason.startsWith("scrolled to post")) {
+                { scrollFeedToTop() }
+            } else {
+                null
+            }
+            overlay.show(detection.surface, toTop)
             overlayShownAt = SystemClock.uptimeMillis()
             scope.launch { settings.recordBlock() }
             main.postDelayed(watchdog, WATCHDOG_INTERVAL_MS)
@@ -222,6 +278,29 @@ class BlockReelsService : AccessibilityService() {
             }
             main.postDelayed(this, WATCHDOG_INTERVAL_MS)
         }
+    }
+
+    /**
+     * Returns the feed to the top by clicking Instagram's own home tab, which is what that
+     * button does when the tab is already selected. Cheaper and far more reliable than
+     * driving scroll actions ourselves, and it leaves the app in a state it chose.
+     *
+     * @return false if the tab couldn't be found or clicked, so the caller can fall back.
+     */
+    private fun scrollFeedToTop(): Boolean {
+        val root = currentAppRoot() ?: return false
+        val tab = root.findAccessibilityNodeInfosByViewId("com.instagram.android:id/feed_tab")
+            ?.firstOrNull() ?: return false
+        // The clickable node is sometimes the tab's parent rather than the labelled view.
+        var node: AccessibilityNodeInfo? = tab
+        repeat(3) {
+            val current = node ?: return false
+            if (current.isClickable) {
+                return current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+            node = current.parent
+        }
+        return false
     }
 
     private fun dismiss() {
@@ -322,6 +401,7 @@ class BlockReelsService : AccessibilityService() {
         const val WATCHDOG_INTERVAL_MS = 400L
         const val MAX_OVERLAY_MS = 5 * 60 * 1000L
         const val SHADE_CLOSE_DELAY_MS = 1200L
+        const val ESCAPE_SUPPRESS_MS = 900L
         const val DUMP_RETRIES = 4
         const val DUMP_RETRY_DELAY_MS = 600L
 

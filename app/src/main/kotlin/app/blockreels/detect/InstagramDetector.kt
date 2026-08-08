@@ -37,7 +37,7 @@ class InstagramDetector : SurfaceDetector {
     override val label = "Instagram Reels, feed & Explore"
     override val verified = true
 
-    override fun detect(signals: ScreenSignals): Detection? {
+    override fun detect(signals: ScreenSignals, config: DetectorConfig): Detection? {
         // Allow-rules run first and win outright. See SurfaceDetector.detect.
         allowedSurface(signals)?.let { return it }
 
@@ -50,10 +50,35 @@ class InstagramDetector : SurfaceDetector {
         if (signals.hasSelectedId("search_tab")) {
             return Detection("Instagram Explore", Verdict.BLOCK, "explore tab selected")
         }
-        if (signals.hasSelectedId("feed_tab")) {
-            return Detection("Instagram feed", Verdict.BLOCK, "home feed tab selected")
-        }
+        if (signals.hasSelectedId("feed_tab")) return homeFeed(signals, config)
         return null
+    }
+
+    /**
+     * The home feed is judged by *position*, not treated as one forbidden place.
+     *
+     * Blocking it outright made Instagram unusable: it opens on the feed, so the block
+     * screen appeared before you could reach messages. Worse, it's a trap — you can't
+     * navigate out of a screen that's covered the moment it appears.
+     *
+     * Position also matches what's actually wrong with the feed. The first handful of
+     * posts are the people you follow; past that it's recommendations and the infinite
+     * tail. So the top stays open and the depth is what's blocked.
+     *
+     * Crucially this reads *current* depth rather than a cumulative counter: scroll back
+     * up and you're free again. That's what keeps it from being a trap, and it's why the
+     * block screen offers to return you to the top.
+     */
+    private fun homeFeed(signals: ScreenSignals, config: DetectorConfig): Detection? {
+        // Null means nothing has scrolled since this screen appeared — you're at the top,
+        // which is exactly the case that must stay open so DMs remain reachable.
+        val depth = signals.scrollIndex ?: return null
+        if (depth <= config.feedPostLimit) return null
+        return Detection(
+            surface = "Instagram feed",
+            verdict = Verdict.BLOCK,
+            reason = "scrolled to post $depth, past the ${config.feedPostLimit} allowed",
+        )
     }
 
     private fun allowedSurface(signals: ScreenSignals): Detection? = when {

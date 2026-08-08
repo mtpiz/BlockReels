@@ -6,6 +6,7 @@
 
     <string name="overlay_title">Not this.</string>
     <string name="overlay_subtitle">%1$s is blocked.</string>
+    <string name="overlay_top">Back to top of feed</string>
     <string name="overlay_back">Go back</string>
     <string name="overlay_home">Home</string>
 
@@ -30,6 +31,8 @@
     <string name="notifications_blocked">Notifications are blocked, so the Dump button can\'t appear. Enable them in Settings → Apps → BlockReels → Notifications.</string>
     <string name="dump_needs_service">Turn on the accessibility service above — the Dump button is posted by it, so nothing appears until it\'s running.</string>
     <string name="dump_where">Ready. Open the app you want to capture, swipe down from the top of the screen, and tap \"Dump screen\" on the BlockReels notification.</string>
+    <string name="feed_limit_title">Home feed depth</string>
+    <string name="feed_limit_hint">Posts you can scroll before the feed is blocked. The people you follow sit near the top; the tail is recommendations. Scroll back up and it unblocks.</string>
     <string name="build_version">build %1$s</string>
     <string name="dumps_empty">No dumps yet.</string>
     <string name="dumps_clear">Clear all</string>

@@ -92,12 +92,53 @@ class InstagramDetectorTest {
         assertEquals("Instagram Explore", detection?.surface)
     }
 
+    // --- the home feed is judged by depth, not treated as forbidden ------------------
+
+    /**
+     * The regression behind this: blocking the feed outright made Instagram unusable,
+     * because it opens on the feed and the block screen appeared before you could reach
+     * messages. A screen covered the instant it opens cannot be navigated out of.
+     */
     @Test
-    fun `blocks the home feed`() {
-        val detection = detector.detect(
-            signals("list", "row_feed_profile_header", selected = setOf("feed_tab")),
+    fun `allows the top of the home feed so the app stays navigable`() {
+        assertNull(
+            detector.detect(signals("list", "row_feed_profile_header", selected = setOf("feed_tab"))),
         )
+    }
+
+    @Test
+    fun `allows the feed within the post limit`() {
+        val signals = signals("list", selected = setOf("feed_tab")).copy(scrollIndex = 6)
+        assertNull(detector.detect(signals, DetectorConfig(feedPostLimit = 10)))
+    }
+
+    @Test
+    fun `blocks the feed past the post limit`() {
+        val signals = signals("list", selected = setOf("feed_tab")).copy(scrollIndex = 24)
+        val detection = detector.detect(signals, DetectorConfig(feedPostLimit = 10))
         assertEquals(Verdict.BLOCK, detection?.verdict)
+        assertEquals("Instagram feed", detection?.surface)
+    }
+
+    /** Scrolling back up must release the block, or the block screen is a trap. */
+    @Test
+    fun `releases the feed when scrolled back toward the top`() {
+        val config = DetectorConfig(feedPostLimit = 10)
+        val deep = signals("list", selected = setOf("feed_tab")).copy(scrollIndex = 40)
+        assertEquals(Verdict.BLOCK, detector.detect(deep, config)?.verdict)
+
+        val backUp = deep.copy(scrollIndex = 2)
+        assertNull(detector.detect(backUp, config))
+    }
+
+    @Test
+    fun `respects a custom post limit`() {
+        val signals = signals("list", selected = setOf("feed_tab")).copy(scrollIndex = 7)
+        assertNull(detector.detect(signals, DetectorConfig(feedPostLimit = 20)))
+        assertEquals(
+            Verdict.BLOCK,
+            detector.detect(signals, DetectorConfig(feedPostLimit = 5))?.verdict,
+        )
     }
 
     @Test

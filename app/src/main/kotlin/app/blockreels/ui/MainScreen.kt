@@ -23,6 +23,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -58,6 +59,7 @@ fun MainScreen(
     val enabledPackages by viewModel.enabledPackages.collectAsStateWithLifecycle()
     val dumpMode by viewModel.dumpMode.collectAsStateWithLifecycle()
     val blockedCount by viewModel.blockedCount.collectAsStateWithLifecycle()
+    val feedPostLimit by viewModel.feedPostLimit.collectAsStateWithLifecycle()
     val dumps by viewModel.dumps.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
@@ -122,6 +124,32 @@ fun MainScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
+                    }
+                }
+            }
+        }
+
+        item {
+            Card {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        stringResource(R.string.feed_limit_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        stringResource(R.string.feed_limit_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(5, 10, 20, 30).forEach { option ->
+                            FilterChip(
+                                selected = feedPostLimit == option,
+                                onClick = { viewModel.setFeedPostLimit(option) },
+                                label = { Text("$option") },
+                            )
+                        }
                     }
                 }
             }
