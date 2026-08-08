@@ -18,23 +18,31 @@ Background on AppBlock and Android blocking generally:
 
 | Piece | State |
 |---|---|
-| Node dumper (milestone 0) | compiles; not yet run on a device |
-| YouTube Shorts detector | unit tested; `reel_progress_bar` is a signal confirmed by other working blockers |
-| Overlay, service, watchdog | compiles; not yet run on a device |
-| Instagram detector | **view ids are unverified guesses** — ships disabled, see below |
+| Node dumper | runs on device; captures used to build the detectors below |
+| Instagram detector | ids captured from a real device, replayed by fixtures, **enabled** |
+| YouTube Shorts detector | unit tested against synthetic fixtures only — `reel_progress_bar` is confirmed by other working blockers, not yet by a capture here |
+| Overlay, service, watchdog | compile and run; not yet confirmed firing on a real feed |
 
-CI builds the APK and runs the tests on every push. Nothing here has run on a phone yet,
-which is the one thing CI cannot tell us: that a detector fires on the real Instagram is a
-claim only a device can settle.
+CI builds the APK, runs the tests and publishes the APK on every push. What CI still cannot
+settle is whether a detector fires on the real app — only a phone answers that.
 
-## Build and install
+### What the captures changed
 
-Easiest: grab `blockreels-debug-apk` from the latest green
-[CI run](../../actions) and
+Three of the guessed Instagram ids were wrong (`explore_tab`, `profile_header`,
+`discover_recycler` don't exist), and one guess was actively dangerous: matching
+`clips_viewer` blocks Stories, because Instagram keeps the Reels pager loaded offscreen the
+whole time a Story is open. See [`docs/content-blocking.md`](docs/content-blocking.md) §2.
 
-```bash
-adb install -r app-debug.apk
-```
+## Install
+
+Download and open on the phone — no adb, no unzipping:
+
+**[`app-debug.apk`](https://github.com/mtpiz/BlockReels/releases/download/dev/app-debug.apk)**
+
+Rebuilt on every push, same link each time. Debug builds are signed with the checked-in
+key in `keystore/`, so a new build installs straight over the old one and keeps its
+permissions. The app footer shows `build 0.1.0+<sha>` so you can tell whether an update
+actually landed.
 
 Or build locally, if you have the Android SDK:
 
@@ -51,27 +59,29 @@ Then open the app and enable the accessibility service. There's no second permis
 prompt — the block screen uses `TYPE_ACCESSIBILITY_OVERLAY`, which an accessibility
 service can draw without `SYSTEM_ALERT_WINDOW`.
 
-## Getting Instagram working
+## Adding or repairing a detector
 
-The Instagram detector ships **off**, because its view ids are educated guesses and a
-wrong *allow* id silently covers your DMs with a blue rectangle. Correcting them is the
-first real job:
+This is the loop for covering a new app, and the loop for fixing detection after an
+Instagram or YouTube update breaks it.
 
 1. Turn on **Dump mode** in the app. A notification appears with a *Dump screen* action.
-2. Open Instagram → Reels. Pull down the shade, tap **Dump**.
-3. Repeat for: a DM thread, a friend's Story, the home feed, Explore, a profile.
-4. Share the dumps out of the app and diff them.
-   The ids present in Reels and absent from Stories *are* your detector.
-5. Drop each dump into `app/src/test/resources/fixtures/`, named for the verdict you
-   expect (`instagram-reels.BLOCK.txt`, `instagram-dm-thread.ALLOW.txt`, …).
-6. Correct the constants in
-   [`InstagramDetector.kt`](app/src/main/kotlin/app/blockreels/detect/InstagramDetector.kt)
-   until `./gradlew testDebugUnitTest` is green, then flip `verified` to `true`.
+   (It's posted by the accessibility service, so that has to be on first.)
+2. Open the screen you care about. Swipe down from the top of the screen, tap **Dump**.
+3. Repeat for the neighbouring screens that must *not* be treated the same way — the
+   diff between them is the detector.
+4. In the app, **Label** each capture from the dropdown, then **Save all to Downloads**.
+5. Upload them to `app/src/test/resources/fixtures/` — the filename carries the expected
+   verdict (`instagram-reels.BLOCK.txt`, `instagram-story.ALLOW.txt`, …).
+6. Edit the constants in the relevant detector until `./gradlew testDebugUnitTest` is
+   green.
 
 Step 5 is what makes step 6 tractable. `FixtureTest` replays every captured dump through
 its detector, so once a surface has been captured **the detector can be rewritten and
 re-checked without a phone** — and no later repair can silently break a screen that was
 already working. Adding a regression is dropping in a file; no test code to write.
+
+Read a dump before uploading it and compare visible against offscreen: the offscreen half
+is where the traps live (§2 of the design notes).
 
 Dump mode stays in release builds on purpose. When an Instagram update breaks detection,
 you want to re-diff on the phone in five minutes, not rebuild from a laptop you don't have.
@@ -80,16 +90,21 @@ A caution on what dumps contain: view ids and class names, but also on-screen **
 which for a DM capture means the messages. Read one before committing it and trim anything
 you'd rather not have in git history. The ids are the part that matters.
 
-### The naming trap
+### Two traps, both confirmed on device
 
-Instagram's resource ids invert the words you'd expect, because the code predates the
-Reels product:
+**The naming is inverted.** Instagram's ids predate the Reels product:
 
-- `reel_*` → **Stories** → allow
+- `reel_viewer_*` → **Stories** → allow
 - `clips_*` → **Reels** → block
 
-A detector matching the substring `"reel"` blocks Stories and allows Reels — exactly
-backwards. Group ids by product, not by name.
+A detector matching the substring `"reel"` blocks Stories and allows Reels, exactly
+backwards. Group ids by product, never by name.
+
+**Presence is not visibility.** While a Story is open, `clips_viewer_view_pager` is still
+in the tree — parked offscreen at `[1440,127][1440,3064]`, because Instagram preloads the
+Reels page of its pager. Matching it without checking `isVisibleToUser` covers every
+Story with the block screen. `NodeScanner` drops offscreen subtrees, and `DumpParser`
+mirrors that so fixtures exercise what the live scan actually sees.
 
 ## Layout
 
@@ -126,7 +141,11 @@ than trusting a dismissal event to arrive, with a five-minute hard ceiling behin
 - No strict mode. Nothing stops you turning the accessibility service off. See
   `docs/appblock-research.md` §4 for the device-owner route if that becomes necessary.
 - The app requests no internet permission and never will — it can read every screen you
-  open, so it should have no way to send that anywhere.
+  open, so it should have no way to send that anywhere. That's also why dumps are exported
+  by hand rather than uploaded from the app.
+- The debug signing key in `keystore/` is committed to a public repo, so it is public.
+  That's the price of updates installing in place instead of forcing an uninstall and a
+  re-grant of accessibility on every iteration. It must never sign a real release.
 
 ## Tests
 
