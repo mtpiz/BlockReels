@@ -166,12 +166,30 @@ fun MainScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    // The Dump action is posted by the accessibility service, so with the
+                    // service off, switching dump mode on appears to do nothing at all.
+                    if (dumpMode && !serviceEnabled) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.dump_needs_service),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                     if (dumpMode && !notificationsAllowed) {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             stringResource(R.string.notifications_blocked),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (dumpMode && serviceEnabled && notificationsAllowed) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.dump_where),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }

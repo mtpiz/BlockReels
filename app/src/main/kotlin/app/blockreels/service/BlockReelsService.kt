@@ -256,10 +256,13 @@ class BlockReelsService : AccessibilityService() {
     }
 
     private fun createNotificationChannel() {
+        // DEFAULT rather than LOW: at LOW several OEMs file it under "silent notifications",
+        // collapsed behind a separate section, and this is the one notification whose whole
+        // purpose is to be findable in a hurry.
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.dump_channel_name),
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         )
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
