@@ -1,6 +1,7 @@
 package app.blockreels.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -249,8 +250,24 @@ fun MainScreen(
                 }
             }
         }
+
+        item {
+            // An update that silently failed to install looks exactly like one that
+            // worked, so name the build that is actually running.
+            Text(
+                text = stringResource(R.string.build_version, buildVersion(context)),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 24.dp, bottom = 32.dp),
+            )
+        }
     }
 }
+
+private fun buildVersion(context: Context): String = runCatching {
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+}.getOrDefault("?")
 
 /**
  * A capture is only usable as a fixture once its filename encodes the expected verdict, so

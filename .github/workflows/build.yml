@@ -25,7 +25,11 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        env:
+          BUILD_TAG: ${{ github.sha }}
+        run: |
+          export BUILD_TAG="${BUILD_TAG:0:7}"
+          ./gradlew assembleDebug --stacktrace
 
       - name: Lint
         run: ./gradlew lintDebug --stacktrace

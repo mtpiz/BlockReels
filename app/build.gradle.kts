@@ -15,10 +15,33 @@ android {
         minSdk = 31
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        // CI appends the short commit sha, so the app can show exactly which build is
+        // installed — otherwise an update that silently didn't take looks identical to one
+        // that did.
+        versionName = "0.1.0" + (System.getenv("BUILD_TAG")?.let { "+$it" } ?: "")
+    }
+
+    // Without this, AGP invents a debug keystore at ~/.android/debug.keystore on first use.
+    // CI runners are ephemeral, so every build got a *different* random key and every APK
+    // refused to install over the last one ("App not installed"), forcing an uninstall and
+    // a full re-grant of accessibility and restricted settings each time.
+    //
+    // A checked-in debug key is the usual fix and makes every build interchangeable. It is
+    // deliberately debug-only and never used for anything trusted: the repo is public, so
+    // treat the key as known to everyone and never reuse it to sign a real release.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/blockreels-debug.jks")
+            storePassword = "android"
+            keyAlias = "blockreels"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             // Dump mode ships in release on purpose: when an app update breaks a
             // detector you want to re-diff on the phone, not on a laptop you don't have.

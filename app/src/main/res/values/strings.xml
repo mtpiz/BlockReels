@@ -30,6 +30,7 @@
     <string name="notifications_blocked">Notifications are blocked, so the Dump button can\'t appear. Enable them in Settings → Apps → BlockReels → Notifications.</string>
     <string name="dump_needs_service">Turn on the accessibility service above — the Dump button is posted by it, so nothing appears until it\'s running.</string>
     <string name="dump_where">Ready. Open the app you want to capture, swipe down from the top of the screen, and tap \"Dump screen\" on the BlockReels notification.</string>
+    <string name="build_version">build %1$s</string>
     <string name="dumps_empty">No dumps yet.</string>
     <string name="dumps_clear">Clear all</string>
     <string name="dump_share">Share</string>
