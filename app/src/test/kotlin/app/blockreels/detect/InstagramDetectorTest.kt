@@ -1,14 +1,13 @@
 package app.blockreels.detect
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * These encode the *intent* of the Instagram detector against plausible view ids. They
- * will need updating alongside the real ids once dump mode has been used on a device —
- * at which point they become the regression suite that stops a repair to one surface from
- * quietly breaking another.
+ * Unit-level cases for the Instagram rules. The ids here are taken from real captures; the
+ * captures themselves are replayed end-to-end by [FixtureTest].
  */
 class InstagramDetectorTest {
 
@@ -16,69 +15,89 @@ class InstagramDetectorTest {
 
     // --- the ones that must never be blocked ---------------------------------------
 
+    /**
+     * The trap: Instagram's `reel_` prefix means Stories, not Reels. A detector matching
+     * the substring "reel" would block this and allow the actual Reels player.
+     */
     @Test
-    fun `allows a direct message thread`() {
-        // An explicit ALLOW rather than merely "no opinion" — DMs are the surface this
-        // whole app is designed not to touch, so they get a positive match of their own.
-        val detection = detector.detect(signals("direct_thread_toggle", "row_thread_composer"))
+    fun `allows the stories viewer despite its reel-prefixed ids`() {
+        val detection = detector.detect(signals("reel_viewer_root", "reel_viewer_header"))
         assertEquals(Verdict.ALLOW, detection?.verdict)
     }
 
     /**
-     * The trap: Instagram's `reel_` prefix means Stories, not Reels. A detector that
-     * matched on the substring "reel" would block this and allow the actual Reels player.
+     * The regression that matters most. While a Story is open, Instagram keeps the Reels
+     * pager in the tree parked offscreen — so the scanner's visibility filter is the only
+     * thing standing between this and a blue rectangle over your friends' Stories.
      */
     @Test
-    fun `allows the stories viewer despite its reel-prefixed ids`() {
-        val detection = detector.detect(signals("reel_viewer_texture_view", "reel_viewer_progress_bar"))
-        assertEquals(Verdict.ALLOW, detection?.verdict)
-    }
-
-    @Test
-    fun `allows stories opened from the tray on top of the feed`() {
-        // Both surfaces are momentarily present during the transition; the allow-rule wins.
+    fun `allows a story even though the reels pager is loaded offscreen`() {
+        // clips_viewer_view_pager deliberately absent: NodeScanner drops it as offscreen.
         val detection = detector.detect(
-            signals("reel_viewer_texture_view", "feed_recycler_view", selected = setOf("feed_tab")),
+            signals("reel_viewer_root", "reel_viewer_title", "swipeable_tab_view_pager"),
         )
         assertEquals(Verdict.ALLOW, detection?.verdict)
     }
 
     @Test
-    fun `allows a profile`() {
-        val detection = detector.detect(signals("profile_header_avatar", "user_detail_header"))
+    fun `allows a direct message thread`() {
+        val detection = detector.detect(signals("direct_thread_toggle", "row_thread_composer"))
         assertEquals(Verdict.ALLOW, detection?.verdict)
+    }
+
+    /** A profile shows no bottom nav, so nothing claims it. */
+    @Test
+    fun `allows a profile`() {
+        assertNull(
+            detector.detect(
+                signals("action_bar_title", "row_feed_photo_profile_name", "carousel_viewpager"),
+            ),
+        )
+    }
+
+    /** DMs are allowed by construction: direct_tab is not a block signal. */
+    @Test
+    fun `allows the direct inbox`() {
+        assertNotEquals(
+            Verdict.BLOCK,
+            detector.detect(signals("direct_tab", "feed_tab", selected = setOf("direct_tab")))?.verdict,
+        )
     }
 
     // --- the ones that must be blocked ----------------------------------------------
 
     @Test
     fun `blocks the reels player`() {
-        val detection = detector.detect(signals("clips_viewer_view_pager", "clips_video_container"))
+        val detection = detector.detect(
+            signals("clips_viewer_view_pager", "clips_video_container", "clips_ufi_component"),
+        )
         assertEquals(Verdict.BLOCK, detection?.verdict)
     }
 
     @Test
     fun `blocks the reels tab`() {
-        val detection = detector.detect(signals("feed_tab", "clips_tab", selected = setOf("clips_tab")))
+        val detection = detector.detect(
+            signals("feed_tab", "clips_tab", "search_tab", selected = setOf("clips_tab")),
+        )
         assertEquals(Verdict.BLOCK, detection?.verdict)
     }
 
+    /** Explore is the search tab — there is no explore_tab. */
     @Test
-    fun `blocks explore`() {
-        val detection = detector.detect(signals("discover_recycler_view", selected = setOf("explore_tab")))
+    fun `blocks explore under the search tab`() {
+        val detection = detector.detect(
+            signals("action_bar_search_edit_text", "pill_bar_rv", selected = setOf("search_tab")),
+        )
         assertEquals(Verdict.BLOCK, detection?.verdict)
+        assertEquals("Instagram Explore", detection?.surface)
     }
 
     @Test
     fun `blocks the home feed`() {
-        val detection = detector.detect(signals("feed_recycler_view", "feed_tab", selected = setOf("feed_tab")))
+        val detection = detector.detect(
+            signals("list", "row_feed_profile_header", selected = setOf("feed_tab")),
+        )
         assertEquals(Verdict.BLOCK, detection?.verdict)
-    }
-
-    /** A single post opened from a link is not the infinite feed. */
-    @Test
-    fun `allows a single post when no feed tab is selected`() {
-        assertNull(detector.detect(signals("row_feed_photo_imageview")))
     }
 
     @Test

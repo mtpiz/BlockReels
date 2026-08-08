@@ -100,22 +100,46 @@ So the detector has to be genuinely more precise. The target matrix:
 | YouTube | Shorts shelf on the home feed | *your call — it's the entry point* |
 | TikTok | (whole app is the feed) | app-level block is fine |
 
-### The naming trap
+### The naming trap — confirmed on device
 
 Instagram's internal resource names are historically confusing in a way that bites
 precisely here: **Stories are called "reel" in the code** (from the original story-tray
-"reel"), while **Reels are called "clips"**. So:
+"reel"), while **Reels are called "clips"**. Captured from a real phone:
 
-- `reel_viewer_*`, `reel_tray_*` → **Stories** → allow
-- `clips_viewer_*`, `clips_video_container`, `clips_tab` → **Reels** → block
+- Stories → `reel_viewer_root`, `reel_viewer_header`, `reel_viewer_title` → allow
+- Reels → `clips_viewer_view_pager`, `clips_video_container` → block
 
-If you write a detector that greps for the substring `"reel"`, you will block Stories and
-allow Reels — exactly backwards. This alone justifies §3.
+A detector that greps for the substring `"reel"` blocks Stories and allows Reels — exactly
+backwards.
 
-Treat every specific ID below as a **hypothesis to verify on your own device**, not a
-fact. Only `reel_progress_bar` (YouTube Shorts) and `clips_tab` / `feed_tab` (Instagram)
-are confirmed from working code; the rest need checking, and all of them drift between app
-versions anyway.
+### Visibility is load-bearing, not an optimisation
+
+The captures turned up something more dangerous than the naming. **While a Story is open,
+`clips_viewer_view_pager` is still in the tree** — Instagram preloads the Reels page of its
+pager and parks it just off the right edge:
+
+```
+#reel_viewer_root          [0,127][1440,3064]      visible, fullscreen
+#clips_viewer_view_pager   [1440,127][1440,3064]   offscreen, zero width
+```
+
+So the "obvious" detector — match `clips_viewer`, block — covers your friends' Stories with
+a blue rectangle. Every surface except Reels itself carries the full `clips_*` subtree
+offscreen.
+
+The scanner therefore drops offscreen subtrees entirely, and the dump replayer must mirror
+that or the fixtures test something the live scan never sees. Pruning can in principle drop
+a visible child of an invisible parent; that costs a missed block, never a wrong one, which
+is the direction this design errs in anyway.
+
+### Which tab is which
+
+The bottom nav is `feed_tab · clips_tab · search_tab · direct_tab · profile_tab`, and the
+selected one identifies the three scrolling surfaces cleanly. Note **Explore lives under
+`search_tab`** — there is no `explore_tab`.
+
+Screens you reach deliberately — a profile, a Story, a DM thread — show no bottom nav at
+all, so they match nothing and stay allowed by construction rather than by an explicit rule.
 
 ---
 

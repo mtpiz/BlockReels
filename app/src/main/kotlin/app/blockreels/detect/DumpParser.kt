@@ -16,6 +16,7 @@ object DumpParser {
     private val DESC = Regex("""desc="([^"]*)"""")
     private val QUOTED = Regex("""(text|desc)="[^"]*"""")
     private const val HEADER = "BlockReels dump"
+    private const val OFFSCREEN = "(offscreen)"
 
     fun parse(dump: String): ScreenSignals {
         var packageName = "unknown"
@@ -36,6 +37,12 @@ object DumpParser {
             // including a '#' or the word SELECTED — so match structure only on what's
             // left once they're removed.
             val structure = QUOTED.replace(line, "")
+
+            // Must mirror NodeScanner, which ignores offscreen subtrees. Without this a
+            // fixture would exercise different inputs than the live scan produces, and the
+            // regression suite would be quietly meaningless.
+            if (OFFSCREEN in structure) return@forEach
+
             val id = ID.find(structure)?.groupValues?.get(1) ?: return@forEach
 
             nodes++

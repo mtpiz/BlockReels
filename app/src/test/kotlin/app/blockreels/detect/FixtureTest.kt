@@ -25,9 +25,7 @@ class FixtureTest {
         check(fixtures.isNotEmpty()) { "no fixtures found in ${fixtureDir()}" }
 
         fixtures.forEach { file ->
-            val expected = file.name.substringAfterLast('.', "").let {
-                file.name.removeSuffix(".txt").substringAfterLast('.')
-            }
+            val expected = file.name.removeSuffix(".txt").substringAfterLast('.')
             val signals = DumpParser.parse(file.readText())
             val detector = Detectors[signals.packageName]
 

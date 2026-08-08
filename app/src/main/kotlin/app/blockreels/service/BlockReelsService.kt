@@ -56,7 +56,7 @@ class BlockReelsService : AccessibilityService() {
             // Tapping a notification action collapses the shade, but not instantly — and
             // while it's open the shade *is* the focused window, so dumping immediately
             // captures System UI instead of the app underneath.
-            main.postDelayed(::captureDump, SHADE_CLOSE_DELAY_MS)
+            main.postDelayed({ captureDump() }, SHADE_CLOSE_DELAY_MS)
         }
     }
 
@@ -170,10 +170,11 @@ class BlockReelsService : AccessibilityService() {
             if (window.type == AccessibilityWindowInfo.TYPE_APPLICATION &&
                 (window.isActive || window.isFocused)
             ) {
-                window.root?.let { return it }
+                val root = window.root ?: return@forEach
+                if (root.packageName?.toString() !in SHELL_PACKAGES) return root
             }
         }
-        return rootInActiveWindow
+        return rootInActiveWindow?.takeIf { it.packageName?.toString() !in SHELL_PACKAGES }
     }
 
     // endregion
@@ -234,10 +235,20 @@ class BlockReelsService : AccessibilityService() {
 
     // region dump mode
 
-    private fun captureDump() {
+    /**
+     * @param attempt retries exist because the notification shade sometimes wins the race:
+     *   it is still the focused window when the capture fires, and the dump comes back as
+     *   System UI rather than the app underneath.
+     */
+    private fun captureDump(attempt: Int = 0) {
         val root = currentAppRoot()
         if (root == null) {
-            Log.w(TAG, "dump requested but no application window is focused")
+            if (attempt < DUMP_RETRIES) {
+                main.postDelayed({ captureDump(attempt + 1) }, DUMP_RETRY_DELAY_MS)
+                return
+            }
+            Log.w(TAG, "dump requested but no application window ever became focused")
+            showDumpNotification(lastFile = getString(R.string.dump_failed))
             return
         }
         val pkg = root.packageName?.toString() ?: "unknown"
@@ -311,5 +322,13 @@ class BlockReelsService : AccessibilityService() {
         const val WATCHDOG_INTERVAL_MS = 400L
         const val MAX_OVERLAY_MS = 5 * 60 * 1000L
         const val SHADE_CLOSE_DELAY_MS = 1200L
+        const val DUMP_RETRIES = 4
+        const val DUMP_RETRY_DELAY_MS = 600L
+
+        /**
+         * Never the subject of a dump: capturing these means the shade hadn't finished
+         * closing, or that we caught our own block screen instead of the app beneath it.
+         */
+        val SHELL_PACKAGES = setOf("com.android.systemui", "app.blockreels")
     }
 }

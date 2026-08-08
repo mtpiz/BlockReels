@@ -37,6 +37,17 @@ object NodeScanner {
             val node = queue.removeFirst()
             scanned++
 
+            // Offscreen subtrees are skipped entirely, and this is load-bearing rather than
+            // an optimisation. Instagram parks the Reels page of its pager just off the
+            // right edge, so `clips_viewer_view_pager` is present in the tree the whole time
+            // you are watching a Story — matching it would block Stories, which is the one
+            // thing this app must never do.
+            //
+            // Pruning can in principle drop a visible child of an invisible parent. That
+            // costs a missed block, never a wrong one, which is the direction this whole
+            // design errs in anyway.
+            if (!node.isVisibleToUser) continue
+
             node.viewIdResourceName?.let { raw ->
                 val id = raw.substringAfterLast('/').lowercase()
                 viewIds += id

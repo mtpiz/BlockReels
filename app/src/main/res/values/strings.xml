@@ -13,6 +13,7 @@
     <string name="dump_notification_title">Dump mode is on</string>
     <string name="dump_notification_text">Open a screen, then tap Dump</string>
     <string name="dump_action">Dump screen</string>
+    <string name="dump_failed">Couldn\'t capture — open the app and try again</string>
 
     <string name="section_permissions">Setup</string>
     <string name="section_blocking">Blocking</string>
