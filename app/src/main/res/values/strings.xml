@@ -26,6 +26,7 @@
 
     <string name="dump_mode_toggle">Dump mode</string>
     <string name="dump_mode_hint">Adds a notification action that writes the current screen\'s layout to a file. Open Reels, dump, open Stories, dump, then diff the two — the ids in one and not the other are your detector.</string>
+    <string name="notifications_blocked">Notifications are blocked, so the Dump button can\'t appear. Enable them in Settings → Apps → BlockReels → Notifications.</string>
     <string name="dumps_empty">No dumps yet.</string>
     <string name="dumps_clear">Clear all</string>
     <string name="dump_share">Share</string>

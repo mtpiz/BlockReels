@@ -1,5 +1,10 @@
 package app.blockreels.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,7 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -47,12 +54,21 @@ fun MainScreen(
     val blockedCount by viewModel.blockedCount.collectAsStateWithLifecycle()
     val dumps by viewModel.dumps.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
     var serviceEnabled by remember { mutableStateOf(false) }
+    var notificationsAllowed by remember { mutableStateOf(true) }
 
-    // Both the service toggle and the dump files change outside this process, so re-read
-    // them whenever the user comes back from Settings or from dumping a screen.
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> notificationsAllowed = granted }
+
+    // The service toggle, the notification grant and the dump files all change outside this
+    // process, so re-read them whenever the user comes back from Settings or from dumping.
     LifecycleResumeEffect(Unit) {
         serviceEnabled = isServiceEnabled()
+        notificationsAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
         viewModel.refreshDumps()
         onPauseOrDispose { }
     }
@@ -132,7 +148,16 @@ fun MainScreen(
                         )
                         Switch(
                             checked = dumpMode,
-                            onCheckedChange = viewModel::setDumpMode,
+                            onCheckedChange = { enabled ->
+                                // The notification *is* the dump trigger, so without this
+                                // grant the whole feature is silently dead on Android 13+.
+                                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationPermission.launch(
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    )
+                                }
+                                viewModel.setDumpMode(enabled)
+                            },
                         )
                     }
                     Spacer(Modifier.height(8.dp))
@@ -141,6 +166,14 @@ fun MainScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (dumpMode && !notificationsAllowed) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.notifications_blocked),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }
